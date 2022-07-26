@@ -25,7 +25,6 @@ import io.warp10.script.ext.token.TokenWarpScriptExtension;
 import io.warp10.standalone.Warp;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;

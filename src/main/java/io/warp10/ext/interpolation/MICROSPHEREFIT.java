@@ -52,14 +52,18 @@ public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScrip
   public static final String EXPONENT = "exponent";
   public static final String NOINTERPOLATIONTOLERANCE = "no.interpolation.tolerance";
 
+  // limits
+  public final static int DEFAULT_MAX_ELEMENTS = 50;
+  public final static String CONFIG_OR_CAPNAME_MAX_ELEMENTS = "interpolation.microsphere.max.elements";
+
   private static final Map<String, Object> defaultInterpolationParams;
   static {
     defaultInterpolationParams = new HashMap<String, Object>();
-    defaultInterpolationParams.put(ELEMENTS, 500);
+    defaultInterpolationParams.put(ELEMENTS, 2);
     defaultInterpolationParams.put(MAXDARKFRACTION, 0.5);
     defaultInterpolationParams.put(DARKTHRESHOLD, 1e-2);
     defaultInterpolationParams.put(BACKGROUND, Double.NaN);
-    defaultInterpolationParams.put(EXPONENT, 1.1);
+    defaultInterpolationParams.put(EXPONENT, 2);
     defaultInterpolationParams.put(NOINTERPOLATIONTOLERANCE, Math.ulp(1d));
   }
 
@@ -247,12 +251,14 @@ public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScrip
     }
 
     int elements = ((Number) interpolationParams.get(ELEMENTS)).intValue();
+    if (elements > InterpolationWarpScriptExtension.getIntLimitValue(stack, CONFIG_OR_CAPNAME_MAX_ELEMENTS, DEFAULT_MAX_ELEMENTS) ) {
+      throw new WarpScriptException(getName() + ": argument " + ELEMENTS + " is above the limit " + CONFIG_OR_CAPNAME_MAX_ELEMENTS);
+    }
     double maxDarkFraction = ((Number) interpolationParams.get(MAXDARKFRACTION)).doubleValue();
     double darkThreshold = ((Number) interpolationParams.get(DARKTHRESHOLD)).doubleValue();
     double background = ((Number) interpolationParams.get(BACKGROUND)).doubleValue();
     double exponent = ((Number) interpolationParams.get(EXPONENT)).doubleValue();
     double noInterpolationTolerance = ((Number) interpolationParams.get(NOINTERPOLATIONTOLERANCE)).doubleValue();
-
 
     MicrosphereProjectionInterpolator interpolator;
 

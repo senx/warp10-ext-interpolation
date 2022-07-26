@@ -25,6 +25,7 @@ import io.warp10.script.ext.token.TokenWarpScriptExtension;
 import io.warp10.standalone.Warp;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -168,8 +169,8 @@ public class InterpolationWarpScriptExtensionTest {
   @Test
   public void startTestingWarp10Platform() throws Exception {
 
-    final String HOME = "/home/jenx/Software/warp10-standalone";
-    //final String HOME = "/home/jenx/Software/warp10-dev";
+    final String HOME = "/home/jenx/Softwares/warp10-standalone/";
+    //final String HOME = "/home/jenx/Softwares/warp10-dev/";
 
     //
     // Base configuration

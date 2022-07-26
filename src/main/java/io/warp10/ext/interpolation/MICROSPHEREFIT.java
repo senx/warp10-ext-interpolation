@@ -14,7 +14,7 @@
 //   limitations under the License.
 //
 
-package io.warp10.ext.commonsmath;
+package io.warp10.ext.interpolation;
 
 import io.warp10.continuum.gts.GTSHelper;
 import io.warp10.continuum.gts.GeoTimeSerie;
@@ -23,12 +23,21 @@ import io.warp10.script.WarpScriptException;
 import io.warp10.script.WarpScriptReducerFunction;
 import io.warp10.script.WarpScriptStack;
 import io.warp10.script.WarpScriptStackFunction;
+import io.warp10.script.functions.PRNG;
+import io.warp10.script.functions.SNAPSHOT;
 import org.apache.commons.math3.analysis.MultivariateFunction;
+import org.apache.commons.math3.analysis.interpolation.InterpolatingMicrosphere;
 import org.apache.commons.math3.analysis.interpolation.MicrosphereProjectionInterpolator;
+import org.apache.commons.math3.random.JDKRandomGenerator;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.UnitSphereRandomVectorGenerator;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Fit an interpolating micro sphere as described in http://www.dudziak.com/microsphere.pdf
@@ -36,6 +45,7 @@ import java.util.Map;
  */
 public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScriptStackFunction {
 
+  public static final String ELEMENTS = "elements";
   public static final String MAXDARKFRACTION = "max.dark.fraction";
   public static final String DARKTHRESHOLD = "dark.threshold";
   public static final String BACKGROUND = "background";
@@ -45,6 +55,7 @@ public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScrip
   private static final Map<String, Object> defaultInterpolationParams;
   static {
     defaultInterpolationParams = new HashMap<String, Object>();
+    defaultInterpolationParams.put(ELEMENTS, 500);
     defaultInterpolationParams.put(MAXDARKFRACTION, 0.5);
     defaultInterpolationParams.put(DARKTHRESHOLD, 1e-2);
     defaultInterpolationParams.put(BACKGROUND, Double.NaN);
@@ -52,12 +63,16 @@ public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScrip
     defaultInterpolationParams.put(NOINTERPOLATIONTOLERANCE, Math.ulp(1d));
   }
 
-  public static class MULTIVARIATEFUNCTION extends NamedWarpScriptFunction implements WarpScriptStackFunction, WarpScriptReducerFunction {
+  private static class MICROSPHERE extends NamedWarpScriptFunction implements WarpScriptStackFunction, WarpScriptReducerFunction {
     private final MultivariateFunction func;
+    private final Object[] snapshotElements;
+    private final String generatedFrom;
 
-    public MULTIVARIATEFUNCTION(MultivariateFunction function) {
-      super("MULTIVARIATEFUNCTION");
+    private MICROSPHERE(MultivariateFunction function, Object[] fittingArguments, String interpolatorName) {
+      super("MICROSPHERE");
       func = function;
+      snapshotElements = fittingArguments;
+      generatedFrom = interpolatorName;
     }
 
     @Override
@@ -97,26 +112,40 @@ public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScrip
 
     @Override
     public String toString() {
-      throw new RuntimeException(getName() + " snapshotability not implemented yet");
+      StringBuilder sb = new StringBuilder();
+      try {
+        for (int i = 0; i < snapshotElements.length; i++) {
+          SNAPSHOT.addElement(sb, snapshotElements[i]);
+        }
+      } catch (WarpScriptException wse) {
+        throw new RuntimeException("Error building argument snapshot", wse);
+      }
+      sb.append(" ");
+      sb.append(generatedFrom);
+
+      return sb.toString();
     }
   }
-  
-  public MICROSPHEREFIT(String name) {
+
+  final private boolean seeded;
+  public MICROSPHEREFIT(String name, boolean seeded) {
     super(name);
+    this.seeded = seeded;
   }
 
   @Override
   public Object apply(WarpScriptStack stack) throws WarpScriptException {
 
+    List<Object> arguments = new ArrayList<Object>();
+
     Object o = stack.pop();
+    arguments.add(o);
 
-    Map<String, Object> interpolationParams = null;
+    Map<String, Object> interpolationParams = defaultInterpolationParams;
     if (o instanceof Map) {
-      interpolationParams = (Map<String, Object>) o;
+      interpolationParams.putAll((Map<String, Object>) o);
       o = stack.pop();
-
-    } else {
-      interpolationParams = defaultInterpolationParams;
+      arguments.add(o);
     }
 
     double[][] xval;
@@ -130,6 +159,7 @@ public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScrip
       }
 
       o = stack.pop();
+      arguments.add(o);
       if (!(o instanceof List)) {
         throw new WarpScriptException(getName() + " expects a List of GTS as first argument.");
       }
@@ -173,6 +203,7 @@ public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScrip
       List<Double> yList = (List<Double>) o;
 
       o = stack.pop();
+      arguments.add(o);
       if (!(o instanceof List)) {
         throw new WarpScriptException(getName() + " expects a List of List as first argument.");
       }
@@ -215,16 +246,37 @@ public class MICROSPHEREFIT extends NamedWarpScriptFunction implements WarpScrip
       throw new WarpScriptException(getName() + ": wrong argument type");
     }
 
+    int elements = ((Number) interpolationParams.get(ELEMENTS)).intValue();
     double maxDarkFraction = ((Number) interpolationParams.get(MAXDARKFRACTION)).doubleValue();
     double darkThreshold = ((Number) interpolationParams.get(DARKTHRESHOLD)).doubleValue();
     double background = ((Number) interpolationParams.get(BACKGROUND)).doubleValue();
     double exponent = ((Number) interpolationParams.get(EXPONENT)).doubleValue();
     double noInterpolationTolerance = ((Number) interpolationParams.get(NOINTERPOLATIONTOLERANCE)).doubleValue();
 
-    MicrosphereProjectionInterpolator interpolator = new MicrosphereProjectionInterpolator(xval[0].length, xval.length, maxDarkFraction, darkThreshold, background, exponent, false, noInterpolationTolerance);
+
+    MicrosphereProjectionInterpolator interpolator;
+
+    if (!seeded) {
+      interpolator = new MicrosphereProjectionInterpolator(xval[0].length, elements, maxDarkFraction, darkThreshold, background, exponent, false, noInterpolationTolerance);
+
+    } else {
+      Random prng = (Random) stack.getAttribute(PRNG.ATTRIBUTE_SEEDED_PRNG);
+
+      if (null == prng) {
+        throw new WarpScriptException(getName() + " seeded PRNG was not initialized.");
+      }
+
+      RandomGenerator prng2 = new JDKRandomGenerator(prng.nextInt());
+      UnitSphereRandomVectorGenerator rvg = new UnitSphereRandomVectorGenerator(xval[0].length, prng2);
+      InterpolatingMicrosphere microsphere = new InterpolatingMicrosphere(xval[0].length, elements, maxDarkFraction, darkThreshold, background, rvg);
+
+      interpolator = new MicrosphereProjectionInterpolator(microsphere, exponent, false, noInterpolationTolerance);
+    }
+
     MultivariateFunction func = interpolator.interpolate(xval, yval);
 
-    stack.push(new MULTIVARIATEFUNCTION(func));
+    Collections.reverse(arguments);
+    stack.push(new MICROSPHERE(func, arguments.toArray(), getName()));
 
     return stack;
   }

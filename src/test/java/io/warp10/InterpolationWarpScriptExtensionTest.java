@@ -39,7 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class CommonsMathWarpScriptExtensionTest {
+public class InterpolationWarpScriptExtensionTest {
 
   /**
    * Test case for the microsphere interpolator

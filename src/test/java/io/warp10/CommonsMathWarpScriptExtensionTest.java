@@ -20,12 +20,24 @@ import io.warp10.ext.interpolation.InterpolationWarpScriptExtension;
 import io.warp10.script.MemoryWarpScriptStack;
 import io.warp10.script.WarpScriptLib;
 import io.warp10.script.WarpScriptStackFunction;
+import io.warp10.script.ext.inventory.InventoryWarpScriptExtension;
+import io.warp10.script.ext.token.TokenWarpScriptExtension;
+import io.warp10.standalone.Warp;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.FileWriter;
 import java.io.StringReader;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CommonsMathWarpScriptExtensionTest {
 
@@ -151,6 +163,96 @@ public class CommonsMathWarpScriptExtensionTest {
    */
   private static double toCoordinate(double min, double range, int res, int pixel) {
     return pixel * range / (res - 1) + min;
+  }
+
+  @Test
+  public void startTestingWarp10Platform() throws Exception {
+
+    final String HOME = "/home/jenx/Software/warp10-standalone";
+    //final String HOME = "/home/jenx/Software/warp10-dev";
+
+    //
+    // Base configuration
+    //
+
+    String default_conf_folder = HOME + "etc/conf.d";
+    List<String> conf = Files.walk(Paths.get(default_conf_folder)).map(x -> x.toString()).filter(f -> f.endsWith(".conf")).collect(Collectors.toList());
+
+    //
+    // Additional or overwriting configurations
+    //
+
+    String extraConfPath = HOME + "etc/conf.d/99-extra.conf";
+    FileWriter fr = new FileWriter(new File(extraConfPath));
+    fr.write("warp.timeunits = us\n");
+    fr.close();
+    conf.add(extraConfPath);
+
+    //
+    // Logging
+    //
+
+    System.setProperty("log4j.configuration", new File(HOME + "etc/log4j.properties").toURI().toString());
+
+    //
+    // Extensions and plugins from jars
+    //
+
+    List<File> jars = new ArrayList<File>();
+    for (File f: new File(HOME + "lib").listFiles()) {
+      if (f.getName().substring(f.getName().length() - 3).equals("jar")) {
+        jars.add(f);
+      }
+    }
+
+    URLClassLoader cl = (URLClassLoader) WarpScriptLib.class.getClassLoader();
+    Method m = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
+    m.setAccessible(true);
+
+    for (int i = 0; i < jars.size(); i++) {
+      URL url = jars.get(i).toURL();
+      m.invoke(cl, url);
+      System.out.println("Loading " + url.toString());
+    }
+
+    //
+    // Start Warp 10
+    //
+
+    Thread t = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Warp.main(conf.toArray(new String[conf.size()]));
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      }
+    });
+    t.start();
+
+    //
+    // Built-in extensions and plugins
+    //
+
+    WarpScriptLib.register(new InventoryWarpScriptExtension());
+    //WarpScriptLib.register(new HttpWarpScriptExtension());
+
+    while(null == Warp.getKeyStore()) {}
+    WarpScriptLib.register(new TokenWarpScriptExtension(Warp.getKeyStore())); //null exception, must be loaded with config file
+    System.out.println("Loaded Token extension");
+
+    //
+    // Extensions and plugins from the classpath
+    //
+
+    WarpScriptLib.register(new InterpolationWarpScriptExtension());
+
+    //
+    // Let Warp10 run
+    //
+
+    t.join();
   }
 
 }

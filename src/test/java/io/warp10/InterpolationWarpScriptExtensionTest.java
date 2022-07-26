@@ -17,6 +17,7 @@
 package io.warp10;
 
 import io.warp10.ext.interpolation.InterpolationWarpScriptExtension;
+import io.warp10.ext.interpolation.MICROSPHEREFIT;
 import io.warp10.script.MemoryWarpScriptStack;
 import io.warp10.script.WarpScriptLib;
 import io.warp10.script.WarpScriptStackFunction;
@@ -76,8 +77,8 @@ public class InterpolationWarpScriptExtensionTest {
     for (int i = 0; i < n; i++) {
       x.add(i, new ArrayList<Double>(dim));
     }
-    List<Double> y = new ArrayList<>(n);
 
+    List<Double> y = new ArrayList<>(n);
     int index = 0;
     for (int i = 0; i < res; i++) {
       final double x1Val = toCoordinate(min, range, res, i);
@@ -99,7 +100,8 @@ public class InterpolationWarpScriptExtensionTest {
 
     stack.push(x);
     stack.push(y);
-    stack.execMulti("MICROSPHEREFIT");
+    WarpConfig.setProperty(MICROSPHEREFIT.CONFIG_OR_CAPNAME_MAX_ELEMENTS, "100");
+    stack.execMulti("{ 'elements' 100 'exponent' 1.1 } MICROSPHEREFIT");
     Object func = stack.pop();
 
     double[] c = new double[dim];

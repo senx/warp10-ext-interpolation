@@ -16,7 +16,7 @@
 
 package io.warp10;
 
-import io.warp10.ext.commonsmath.CommonsMathWarpScriptExtension;
+import io.warp10.ext.interpolation.InterpolationWarpScriptExtension;
 import io.warp10.script.MemoryWarpScriptStack;
 import io.warp10.script.WarpScriptLib;
 import io.warp10.script.WarpScriptStackFunction;
@@ -38,7 +38,7 @@ public class CommonsMathWarpScriptExtensionTest {
 
     props.append("warp.timeunits=us\n");
     WarpConfig.safeSetProperties(new StringReader(props.toString()));
-    WarpScriptLib.register(new CommonsMathWarpScriptExtension());
+    WarpScriptLib.register(new InterpolationWarpScriptExtension());
 
     MemoryWarpScriptStack stack = new MemoryWarpScriptStack(null, null);
     stack.maxLimits();

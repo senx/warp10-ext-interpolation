@@ -46,7 +46,7 @@ public class InterpolationWarpScriptExtensionTest {
    * Test case for the microsphere interpolator
    */
   @Test
-  public void test() throws Exception {
+  public void microsphere_test() throws Exception {
     StringBuilder props = new StringBuilder();
 
     props.append("warp.timeunits=us\n");

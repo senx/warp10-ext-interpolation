@@ -18,6 +18,7 @@ package io.warp10;
 
 import io.warp10.ext.interpolation.InterpolationWarpScriptExtension;
 import io.warp10.ext.interpolation.MICROSPHEREFIT;
+import io.warp10.ext.interpolation.TRICUBICFIT;
 import io.warp10.script.MemoryWarpScriptStack;
 import io.warp10.script.WarpScriptLib;
 import io.warp10.script.WarpScriptStackFunction;
@@ -25,6 +26,7 @@ import io.warp10.script.ext.inventory.InventoryWarpScriptExtension;
 import io.warp10.script.ext.token.TokenWarpScriptExtension;
 import io.warp10.standalone.Warp;
 import org.apache.commons.math3.analysis.MultivariateFunction;
+import org.apache.commons.math3.analysis.TrivariateFunction;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -37,10 +39,174 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class InterpolationWarpScriptExtensionTest {
+
+  @Test
+  public void tricubic_testPlane()  throws Exception {
+    StringBuilder props = new StringBuilder();
+
+    props.append("warp.timeunits=us\n");
+    WarpConfig.safeSetProperties(new StringReader(props.toString()));
+    InterpolationWarpScriptExtension ext = new InterpolationWarpScriptExtension();
+    WarpScriptLib.register(ext);
+
+    MemoryWarpScriptStack stack = new MemoryWarpScriptStack(null, null);
+    stack.maxLimits();
+    double[] xval = new double[] {3, 4, 5, 6.5};
+    double[] yval = new double[] {-4, -3, -1, 2, 2.5};
+    double[] zval = new double[] {-12, -8, -5.5, -3, 0, 2.5};
+
+    List<Double> xlist = new ArrayList<>();
+    for (int i = 0; i < xval.length; i++) {
+      xlist.add(xval[i]);
+    }
+    List<Double> ylist = new ArrayList<>();
+    for (int i = 0; i < yval.length; i++) {
+      ylist.add(yval[i]);
+    }
+    List<Double> zlist = new ArrayList<>();
+    for (int i = 0; i < zval.length; i++) {
+      zlist.add(zval[i]);
+    }
+
+    // Function values
+    TrivariateFunction f = new TrivariateFunction() {
+      @Override
+      public double value(double x, double y, double z) {
+        return 2 * x - 3 * y - 4 * z + 5;
+      }
+    };
+
+    double[][][] fval = new double[xval.length][yval.length][zval.length];
+    List<List<List<Double>>> fvalTensor = new ArrayList<List<List<Double>>>();
+
+    for (int i = 0; i < xval.length; i++) {
+      fvalTensor.add(new ArrayList<>());
+
+      for (int j = 0; j < yval.length; j++) {
+        fvalTensor.get(i).add(new ArrayList<Double>());
+
+        for (int k = 0; k < zval.length; k++) {
+          // tensor
+          List<Double> l = fvalTensor.get(i).get(j);
+          l.add(f.value(xval[i], yval[j], zval[k]));
+
+          // 3d arrays
+          fval[i][j][k] = f.value(xval[i], yval[j], zval[k]);
+        }
+      }
+    }
+
+    stack.push(xlist);
+    stack.push(ylist);
+    stack.push(zlist);
+    stack.push(fvalTensor);
+
+    ((WarpScriptStackFunction) ext.getFunctions().get(TRICUBICFIT.class.getSimpleName())).apply(stack);
+    WarpScriptStackFunction function = (WarpScriptStackFunction) stack.pop();
+
+    List<Number> input = new ArrayList<>();
+    input.add(4L);
+    input.add(-3L);
+    input.add(0L);
+    stack.push(input);
+    function.apply(stack);
+    stack.push(f.value(input.get(0).doubleValue(), input.get(1).doubleValue(), input.get(2).doubleValue()));
+    stack.execMulti("== ASSERT");
+
+    input = new ArrayList<>();
+    input.add(4.5);
+    input.add(-1.5);
+    input.add(-4.25);
+    stack.push(input);
+    function.apply(stack);
+    stack.push(f.value(input.get(0).doubleValue(), input.get(1).doubleValue(), input.get(2).doubleValue()));
+    stack.execMulti("== ASSERT");
+
+    System.out.println(stack.dump(100));
+  }
+
+  @Test
+  public void tricubic_testPrPFailCase()  throws Exception {
+    StringBuilder props = new StringBuilder();
+
+    props.append("warp.timeunits=us\n");
+    WarpConfig.safeSetProperties(new StringReader(props.toString()));
+    InterpolationWarpScriptExtension ext = new InterpolationWarpScriptExtension();
+    WarpScriptLib.register(ext);
+
+    MemoryWarpScriptStack stack = new MemoryWarpScriptStack(null, null);
+    stack.maxLimits();
+    double[] xval = new double[] {1, 2};
+    double[] yval = new double[] {1, 4};
+    double[] zval = new double[] {1, 6};
+
+    List<Double> xlist = new ArrayList<>();
+    for (int i = 0; i < xval.length; i++) {
+      xlist.add(xval[i]);
+    }
+    List<Double> ylist = new ArrayList<>();
+    for (int i = 0; i < yval.length; i++) {
+      ylist.add(yval[i]);
+    }
+    List<Double> zlist = new ArrayList<>();
+    for (int i = 0; i < zval.length; i++) {
+      zlist.add(zval[i]);
+    }
+
+    // Function values
+    TrivariateFunction f = new TrivariateFunction() {
+      @Override
+      public double value(double x, double y, double z) {
+        return 2 * x - 3 * y - 4 * z + 5;
+      }
+    };
+
+    double[][][] fval = new double[xval.length][yval.length][zval.length];
+    List<List<List<Double>>> fvalTensor = new ArrayList<List<List<Double>>>();
+
+    for (int i = 0; i < xval.length; i++) {
+      fvalTensor.add(new ArrayList<>());
+
+      for (int j = 0; j < yval.length; j++) {
+        fvalTensor.get(i).add(new ArrayList<Double>());
+
+        for (int k = 0; k < zval.length; k++) {
+          // tensor
+          List<Double> l = fvalTensor.get(i).get(j);
+          l.add(f.value(xval[i], yval[j], zval[k]));
+
+          // 3d arrays
+          fval[i][j][k] = f.value(xval[i], yval[j], zval[k]);
+        }
+      }
+    }
+
+    stack.push(xlist);
+    stack.push(ylist);
+    stack.push(zlist);
+    stack.push(fvalTensor);
+
+    ((WarpScriptStackFunction) ext.getFunctions().get(TRICUBICFIT.class.getSimpleName())).apply(stack);
+    WarpScriptStackFunction function = (WarpScriptStackFunction) stack.pop();
+
+    List<Number> input = new ArrayList<>();
+    input.add(1.6);
+    input.add(1);
+    input.add(1);
+    stack.push(input);
+    function.apply(stack);
+    stack.push(f.value(input.get(0).doubleValue(), input.get(1).doubleValue(), input.get(2).doubleValue()));
+
+    System.out.println(stack.dump(100));
+    //stack.execMulti("== ASSERT");
+
+    //System.out.println(stack.dump(100));
+  }
 
   /**
    * Test case for the microsphere interpolator

@@ -40,13 +40,13 @@ public class InterpolatorOnTicks extends NamedWarpScriptFunction implements Warp
 
   private TYPE type;
 
-  private static class INTERPOLATOR extends NamedWarpScriptFunction implements WarpScriptStackFunction, WarpScriptMapperFunction {
+  private static class MAPPER_INTERPOLATOR extends NamedWarpScriptFunction implements WarpScriptMapperFunction {
 
     private final PolynomialSplineFunction func;
     private final String generatedFrom;
     private GeoTimeSerie gts;
 
-    private INTERPOLATOR(PolynomialSplineFunction function, String interpolatorName, GeoTimeSerie gts) {
+    private MAPPER_INTERPOLATOR(PolynomialSplineFunction function, String interpolatorName, GeoTimeSerie gts) {
       super(interpolatorName);
       func = function;
       this.gts = gts;
@@ -59,19 +59,6 @@ public class InterpolatorOnTicks extends NamedWarpScriptFunction implements Warp
       } else {
         return func.value(x);
       }
-    }
-
-    @Override
-    public Object apply(WarpScriptStack stack) throws WarpScriptException {
-      Object o = stack.pop();
-      if (!(o instanceof Number)) {
-        throw new WarpScriptException(getName() + " expects a DOUBLE or a LONG");
-      }
-
-      double x = ((Number) o).doubleValue();
-      stack.push(value(x));
-
-      return stack;
     }
 
     @Override
@@ -161,7 +148,7 @@ public class InterpolatorOnTicks extends NamedWarpScriptFunction implements Warp
     }
 
     // clone the inputs for snapshot. 
-    INTERPOLATOR warpscriptFunction = new INTERPOLATOR(function, getName(), gts.clone());
+    MAPPER_INTERPOLATOR warpscriptFunction = new MAPPER_INTERPOLATOR(function, getName(), gts.clone());
     stack.push(warpscriptFunction);
 
     return stack;

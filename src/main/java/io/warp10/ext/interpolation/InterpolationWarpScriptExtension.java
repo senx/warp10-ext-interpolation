@@ -37,6 +37,9 @@ public class InterpolationWarpScriptExtension extends WarpScriptExtension {
   public static final String INTERPOLATOR_1D_LINEAR = "INTERPOLATOR.1D.LINEAR";
   public static final String INTERPOLATOR_1D_SPLINE = "INTERPOLATOR.1D.SPLINE";
   public static final String INTERPOLATOR_1D_AKIMA = "INTERPOLATOR.1D.AKIMA";
+  public static final String INTERPOLATOR_TICK_LINEAR = "mapper.interpolator.linear";
+  public static final String INTERPOLATOR_TICK_SPLINE = "mapper.interpolator.spline";
+  public static final String INTERPOLATOR_TICK_AKIMA = "mapper.interpolator.akima";
 
   private static final Map<String, Object> functions;
 
@@ -50,6 +53,9 @@ public class InterpolationWarpScriptExtension extends WarpScriptExtension {
     functions.put(INTERPOLATOR_1D_LINEAR, new InterpolatorUnivariate(INTERPOLATOR_1D_LINEAR, InterpolatorUnivariate.TYPE.LINEAR));
     functions.put(INTERPOLATOR_1D_SPLINE, new InterpolatorUnivariate(INTERPOLATOR_1D_SPLINE, InterpolatorUnivariate.TYPE.SPLINE));
     functions.put(INTERPOLATOR_1D_AKIMA, new InterpolatorUnivariate(INTERPOLATOR_1D_AKIMA, InterpolatorUnivariate.TYPE.AKIMA));
+    functions.put(INTERPOLATOR_TICK_LINEAR, new InterpolatorOnTicks(INTERPOLATOR_TICK_LINEAR, InterpolatorOnTicks.TYPE.LINEAR));
+    functions.put(INTERPOLATOR_TICK_SPLINE, new InterpolatorOnTicks(INTERPOLATOR_TICK_SPLINE, InterpolatorOnTicks.TYPE.SPLINE));
+    functions.put(INTERPOLATOR_TICK_AKIMA, new InterpolatorOnTicks(INTERPOLATOR_TICK_AKIMA, InterpolatorOnTicks.TYPE.AKIMA));
   }
 
   //

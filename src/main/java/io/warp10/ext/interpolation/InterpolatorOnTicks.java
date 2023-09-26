@@ -125,6 +125,9 @@ public class InterpolatorOnTicks extends NamedWarpScriptFunction implements Warp
       throw new WarpScriptException(getName() + " expects a GTS");
     }
     GeoTimeSerie gts = (GeoTimeSerie) o;
+    
+    // ticks need to be sorted in order to create the interpolating function
+    GTSHelper.sort(gts);
 
     // fill x and f
     int size = gts.size();

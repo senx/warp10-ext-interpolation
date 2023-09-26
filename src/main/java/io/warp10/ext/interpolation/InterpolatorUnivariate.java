@@ -98,7 +98,6 @@ public class InterpolatorUnivariate extends NamedWarpScriptFunction implements W
     public String toString() {
       StringBuilder sb = new StringBuilder();
 
-
       try {
         sb.append(WarpScriptLib.LIST_START);
         sb.append(" ");

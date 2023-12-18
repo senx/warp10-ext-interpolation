@@ -16,6 +16,8 @@
 
 package io.warp10.ext.interpolation;
 
+import io.warp10.continuum.gts.GTSHelper;
+import io.warp10.continuum.gts.GeoTimeSerie;
 import io.warp10.script.NamedWarpScriptFunction;
 import io.warp10.script.WarpScriptException;
 import io.warp10.script.WarpScriptLib;
@@ -38,9 +40,9 @@ public class InterpolatorUnivariate extends NamedWarpScriptFunction implements W
   public enum TYPE {
     LINEAR, SPLINE, AKIMA
   }
-  
+
   private TYPE type;
-  
+
   private static class INTERPOLATOR extends NamedWarpScriptFunction implements WarpScriptStackFunction, WarpScriptMapperFunction {
 
     private final PolynomialSplineFunction func;
@@ -67,12 +69,35 @@ public class InterpolatorUnivariate extends NamedWarpScriptFunction implements W
     @Override
     public Object apply(WarpScriptStack stack) throws WarpScriptException {
       Object o = stack.pop();
-      if (!(o instanceof Number)) {
-        throw new WarpScriptException(getName() + " expects a DOUBLE or a LONG");
-      }
+      if (o instanceof Number) {
+        double x = ((Number) o).doubleValue();
+        stack.push(value(x));
+      } else if (o instanceof GeoTimeSerie) {
+        GeoTimeSerie gts = (GeoTimeSerie) o;
+        int n = GTSHelper.nvalues(gts);
 
-      double x = ((Number) o).doubleValue();
-      stack.push(value(x));
+        // early return for empty GTS, or wrong type ones
+        if (n == 0) { 
+          stack.push(gts.cloneEmpty());
+          return stack;
+        }
+        if (!(((GeoTimeSerie) o).getType() == GeoTimeSerie.TYPE.DOUBLE || ((GeoTimeSerie) o).getType() == GeoTimeSerie.TYPE.LONG)) {
+          throw new WarpScriptException(getName() + " expects a LONG or a DOUBLE GTS");
+        }
+
+        GeoTimeSerie result = gts.cloneEmpty();
+        result.setType(GeoTimeSerie.TYPE.DOUBLE);
+
+        for (int i = 0; i < n; i++) {
+          double v = ((Number) GTSHelper.valueAtIndex(gts, i)).doubleValue();
+          long tick = GTSHelper.tickAtIndex(gts, i);
+          long location = GTSHelper.locationAtTick(gts, i);
+          GTSHelper.setValue(result, tick, location, value(v));
+        }
+        stack.push(result);
+      } else {
+        throw new WarpScriptException(getName() + " expects a DOUBLE or a LONG, or a numerical GTS");
+      }
 
       return stack;
     }
@@ -129,7 +154,7 @@ public class InterpolatorUnivariate extends NamedWarpScriptFunction implements W
 
   public InterpolatorUnivariate(String name, TYPE type) {
     super(name);
-    this.type=type;
+    this.type = type;
   }
 
   @Override
@@ -175,11 +200,11 @@ public class InterpolatorUnivariate extends NamedWarpScriptFunction implements W
     }
 
     PolynomialSplineFunction function = null;
-    if (type==TYPE.LINEAR) {
+    if (type == TYPE.LINEAR) {
       function = (new LinearInterpolator()).interpolate(xval, fval);
-    } else if (type==TYPE.SPLINE) {
+    } else if (type == TYPE.SPLINE) {
       function = (new SplineInterpolator()).interpolate(xval, fval);
-    } else if (type==TYPE.AKIMA) {
+    } else if (type == TYPE.AKIMA) {
       function = (new AkimaSplineInterpolator()).interpolate(xval, fval);
     }
 

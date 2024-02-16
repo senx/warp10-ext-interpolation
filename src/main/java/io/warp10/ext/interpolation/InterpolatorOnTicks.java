@@ -89,7 +89,7 @@ public class InterpolatorOnTicks extends NamedWarpScriptFunction implements Warp
         }
       }
 
-      return new Object[] {tick, locations[0], elevations[0], value(tick)};
+      return new Object[] {tick, GeoTimeSerie.NO_LOCATION, GeoTimeSerie.NO_ELEVATION, value(tick)};
     }
 
     @Override
